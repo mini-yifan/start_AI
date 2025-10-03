@@ -1,0 +1,186 @@
+import pygame
+import random
+import sys
+
+# 初始化pygame
+pygame.init()
+
+# 游戏常量
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+GRID_SIZE = 20
+GRID_WIDTH = SCREEN_WIDTH // GRID_SIZE
+GRID_HEIGHT = SCREEN_HEIGHT // GRID_SIZE
+FPS = 10
+
+# 颜色定义
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+BLUE = (0, 0, 255)
+
+class Snake:
+    def __init__(self):
+        # 蛇的初始位置（居中）
+        self.reset()
+        
+    def reset(self):
+        # 重置蛇的状态
+        self.length = 3
+        self.positions = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
+        self.direction = random.choice([(0, 1), (0, -1), (1, 0), (-1, 0)])
+        self.score = 0
+        self.grow_pending = 2  # 初始长度为3，所以需要增长2次
+        
+    def get_head_position(self):
+        # 获取蛇头位置
+        return self.positions[0]
+    
+    def update(self):
+        # 更新蛇的位置
+        head = self.get_head_position()
+        x, y = self.direction
+        new_position = (((head[0] + x) % GRID_WIDTH), ((head[1] + y) % GRID_HEIGHT))
+        
+        # 检查是否撞到自己
+        if new_position in self.positions[1:]:
+            return False  # 游戏结束
+            
+        self.positions.insert(0, new_position)
+        
+        if self.grow_pending > 0:
+            self.grow_pending -= 1
+        else:
+            self.positions.pop()
+            
+        return True  # 游戏继续
+    
+    def grow(self):
+        # 增加蛇的长度
+        self.grow_pending += 1
+        self.score += 10
+    
+    def change_direction(self, direction):
+        # 改变蛇的移动方向
+        # 防止蛇反向移动
+        if (direction[0] * -1, direction[1] * -1) != self.direction:
+            self.direction = direction
+    
+    def draw(self, surface):
+        # 绘制蛇
+        for i, pos in enumerate(self.positions):
+            color = GREEN if i == 0 else (0, 200, 0)  # 蛇头颜色稍深
+            rect = pygame.Rect(pos[0] * GRID_SIZE, pos[1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+            pygame.draw.rect(surface, color, rect)
+            pygame.draw.rect(surface, BLACK, rect, 1)  # 边框
+
+class Food:
+    def __init__(self):
+        self.position = (0, 0)
+        self.randomize_position()
+        
+    def randomize_position(self):
+        # 随机生成食物位置
+        self.position = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
+    
+    def draw(self, surface):
+        # 绘制食物
+        rect = pygame.Rect(self.position[0] * GRID_SIZE, self.position[1] * GRID_SIZE, GRID_SIZE, GRID_SIZE)
+        pygame.draw.rect(surface, RED, rect)
+        pygame.draw.rect(surface, BLACK, rect, 1)  # 边框
+
+def main():
+    # 创建游戏窗口
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption("贪吃蛇游戏")
+    clock = pygame.time.Clock()
+    
+    # 创建游戏对象
+    snake = Snake()
+    food = Food()
+    
+    # 字体设置
+    font = pygame.font.Font(None, 36)
+    
+    # 游戏状态
+    game_over = False
+    
+    while True:
+        # 处理事件
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            
+            # 鼠标点击控制方向
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if game_over:
+                    # 如果游戏结束，点击鼠标重新开始
+                    snake.reset()
+                    food.randomize_position()
+                    game_over = False
+                else:
+                    # 获取鼠标位置
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+                    head_x, head_y = snake.get_head_position()
+                    
+                    # 计算鼠标与蛇头的相对位置
+                    dx = mouse_x - (head_x * GRID_SIZE + GRID_SIZE // 2)
+                    dy = mouse_y - (head_y * GRID_SIZE + GRID_SIZE // 2)
+                    
+                    # 根据鼠标位置决定移动方向
+                    if abs(dx) > abs(dy):
+                        # 水平移动
+                        if dx > 0:
+                            snake.change_direction((1, 0))  # 向右
+                        else:
+                            snake.change_direction((-1, 0))  # 向左
+                    else:
+                        # 垂直移动
+                        if dy > 0:
+                            snake.change_direction((0, 1))  # 向下
+                        else:
+                            snake.change_direction((0, -1))  # 向上
+        
+        if not game_over:
+            # 更新游戏逻辑
+            if not snake.update():
+                game_over = True
+                
+            # 检查是否吃到食物
+            if snake.get_head_position() == food.position:
+                snake.grow()
+                food.randomize_position()
+                # 确保食物不在蛇身上
+                while food.position in snake.positions:
+                    food.randomize_position()
+        
+        # 绘制游戏画面
+        screen.fill(BLACK)
+        
+        # 绘制网格线（可选）
+        for x in range(0, SCREEN_WIDTH, GRID_SIZE):
+            pygame.draw.line(screen, (40, 40, 40), (x, 0), (x, SCREEN_HEIGHT))
+        for y in range(0, SCREEN_HEIGHT, GRID_SIZE):
+            pygame.draw.line(screen, (40, 40, 40), (0, y), (SCREEN_WIDTH, y))
+        
+        # 绘制游戏对象
+        snake.draw(screen)
+        food.draw(screen)
+        
+        # 显示分数
+        score_text = font.render(f"分数: {snake.score}", True, WHITE)
+        screen.blit(score_text, (10, 10))
+        
+        # 显示游戏结束信息
+        if game_over:
+            game_over_text = font.render("游戏结束! 点击鼠标重新开始", True, WHITE)
+            text_rect = game_over_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2))
+            screen.blit(game_over_text, text_rect)
+        
+        pygame.display.flip()
+        clock.tick(FPS)
+
+if __name__ == "__main__":
+    main()
