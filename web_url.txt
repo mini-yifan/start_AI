@@ -1,0 +1,8 @@
+{
+    "哔哩哔哩": "https://www.bilibili.com/",
+    "抖音": "https://www.douyin.com/",
+    "淘宝": "https://www.taobao.com/",
+    "京东": "https://www.jd.com/",
+    "CSDN": "https://www.csdn.net/",
+    "GitHub": "https://github.com/"
+}
